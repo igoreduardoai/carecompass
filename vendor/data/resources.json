@@ -1,0 +1,8 @@
+[
+ {"name": "Clinic financial counselor (in-house)", "domains": ["cost"], "zip_prefixes": ["*"]},
+ {"name": "Manufacturer patient-support program (verify per drug)", "domains": ["cost"], "zip_prefixes": ["*"]},
+ {"name": "Clinic social worker (in-house)", "domains": ["housing", "caregiver", "transportation"], "zip_prefixes": ["*"]},
+ {"name": "Medical interpreter line (in-house)", "domains": ["language"], "zip_prefixes": ["*"]},
+ {"name": "211 community resource line", "phone": "211", "domains": ["transportation", "housing", "cost"], "zip_prefixes": ["*"]},
+ {"name": "Local paratransit (DEMO entry; replace with verified local service)", "domains": ["transportation", "caregiver"], "zip_prefixes": ["787"]}
+]

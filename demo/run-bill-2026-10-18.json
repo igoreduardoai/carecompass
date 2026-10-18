@@ -1,0 +1,95 @@
+{
+ "model": "nvidia/nemotron-3-super-120b-a12b:free",
+ "trace": [
+  {
+   "tool": "estimate_patient_bill",
+   "args": {
+    "plan": {
+     "deductible_remaining": 500,
+     "coinsurance": 0.2,
+     "copay": 0,
+     "oop_remaining": 5000
+    },
+    "lines": [
+     {
+      "code": "ER",
+      "description": "Emergency room visit",
+      "billed": 620,
+      "allowed": 620,
+      "covered": true
+     },
+     {
+      "code": "XRAY",
+      "description": "X-ray",
+      "billed": 95,
+      "allowed": 95,
+      "covered": true
+     },
+     {
+      "code": "ECG",
+      "description": "ECG",
+      "billed": 40,
+      "allowed": 40,
+      "covered": true
+     }
+    ]
+   },
+   "result": {
+    "total": 551.0,
+    "lines": [
+     {
+      "code": "ER",
+      "description": "Emergency room visit",
+      "billed": 620,
+      "allowed": 620,
+      "covered": true,
+      "patient_owes": 524.0,
+      "insurer_pays": 96.0,
+      "writeoff": 0,
+      "reason": "copay/deductible/coinsurance"
+     },
+     {
+      "code": "XRAY",
+      "description": "X-ray",
+      "billed": 95,
+      "allowed": 95,
+      "covered": true,
+      "patient_owes": 19.0,
+      "insurer_pays": 76.0,
+      "writeoff": 0,
+      "reason": "copay/deductible/coinsurance"
+     },
+     {
+      "code": "ECG",
+      "description": "ECG",
+      "billed": 40,
+      "allowed": 40,
+      "covered": true,
+      "patient_owes": 8.0,
+      "insurer_pays": 32.0,
+      "writeoff": 0,
+      "reason": "copay/deductible/coinsurance"
+     }
+    ],
+    "speech": "Here is what your visit costs you after insurance. Emergency room visit: you owe $524.00; X-ray: you owe $19.00; ECG: you owe $8.00. Your total is $551.00. Payment plans are available."
+   }
+  },
+  {
+   "tool": "payment_plan",
+   "args": {
+    "total": 551,
+    "months": 3
+   },
+   "result": {
+    "installments": [
+     183.67,
+     183.67,
+     183.66
+    ],
+    "speech": "That's 3 payments of about $183.67, with no interest."
+   }
+  }
+ ],
+ "ungrounded_amounts_blocked": [],
+ "speech": "Your total patient responsibility is $551. You can split this into three interest\u2011free monthly payments: two payments of $183.67 and one payment of $183.66."
+}
