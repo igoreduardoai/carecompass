@@ -20,9 +20,13 @@ def run(claim: dict, months: int = 1, approve: bool = False, pp: PayPal | None =
     inst = payment_plan(calc["total"], months) if calc["total"] > 0 else []
     amounts = [calc["total"], *[l["patient_owes"] for l in calc["lines"]], *[l["allowed"] for l in calc["lines"]],
                *[l["billed"] for l in calc["lines"]], *inst]
-    facts = {"amounts": amounts, "total": calc["total"], "must_mention_total": True}
-    prompt = ("Explain this bill. Line items (description, billed, allowed by insurance, patient owes): " +
-              "; ".join(f"{l['description']}, ${l['billed']:,.2f}, ${l['allowed']:,.2f}, ${l['patient_owes']:,.2f}" for l in calc["lines"]) +
+    amounts += [l["insurer_pays"] for l in calc["lines"]]
+    roles = {"insurer_pays": [l["insurer_pays"] for l in calc["lines"]],
+             "allowed": [l["allowed"] for l in calc["lines"]],
+             "patient": [calc["total"], *[l["patient_owes"] for l in calc["lines"]], *inst]}
+    facts = {"amounts": amounts, "total": calc["total"], "must_mention_total": True, "roles": roles}
+    prompt = ("Explain this bill. 'Allowed' is the price the insurer agreed to, NOT what it paid. Line items: " +
+              "; ".join(f"{l['description']}: billed ${l['billed']:,.2f}, allowed ${l['allowed']:,.2f}, insurance paid ${l['insurer_pays']:,.2f}, you owe ${l['patient_owes']:,.2f}" for l in calc["lines"]) +
               f". Total patient owes ${calc['total']:,.2f}." + (f" Plan: {months} payments of about ${inst[0]:,.2f}." if months > 1 and inst else ""))
     text, backend, violations = None, "template", []
     try:
