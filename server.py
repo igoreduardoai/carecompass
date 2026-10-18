@@ -16,7 +16,7 @@ PROTOCOL = "2025-11-25"
 TOOLS = [
  {"name": "estimate_patient_bill", "description": "Compute exactly what a patient owes for a claim (deductible, coinsurance, copay, OOP max) and explain it in plain English. Math is deterministic; never estimated by an LLM.",
   "inputSchema": {"type": "object", "required": ["plan", "lines"], "properties": {
-     "plan": {"type": "object", "properties": {"deductible_remaining": {"type": "number"}, "coinsurance": {"type": "number"}, "copay": {"type": "number"}, "oop_remaining": {"type": "number"}}},
+     "plan": {"type": "object", "properties": {"deductible_remaining": {"type": "number"}, "coinsurance": {"type": "number", "description": "Fraction, e.g. 0.2 for 20%"}, "copay": {"type": "number"}, "oop_remaining": {"type": "number", "description": "Out-of-pocket max remaining. OMIT if unknown; 0 means the OOP max is already met."}}},
      "lines": {"type": "array", "items": {"type": "object", "properties": {"code": {"type": "string"}, "description": {"type": "string"}, "billed": {"type": "number"}, "allowed": {"type": "number"}, "covered": {"type": "boolean"}}}}}},
   "annotations": {"readOnlyHint": True}},
  {"name": "payment_plan", "description": "Split a balance into 1-24 equal interest-free monthly payments.",
@@ -33,6 +33,14 @@ TOOLS = [
 
 def call(name, a):
     if name == "estimate_patient_bill":
+        plan = dict(a["plan"])
+        # Guard: an LLM often fills oop_remaining=0 for "unknown". That is inconsistent with a deductible still remaining
+        # (OOP remaining can never be below deductible remaining), so treat it as unknown instead of zeroing the bill.
+        if plan.get("oop_remaining") is not None and plan.get("deductible_remaining", 0) > plan["oop_remaining"]:
+            plan.pop("oop_remaining")
+        if plan.get("coinsurance", 0) > 1:  # "20" means 20%
+            plan["coinsurance"] = plan["coinsurance"] / 100
+        a = {**a, "plan": plan}
         calc = compute([Line(**{"code": "", "description": "service", "covered": True, **l}) for l in a["lines"]], Plan(**{"deductible_remaining": 0, "coinsurance": 0, "copay": 0, "oop_remaining": 1e9, **a["plan"]}))
         return {"total": calc["total"], "lines": calc["lines"], "speech": template_explanation(calc)}
     if name == "payment_plan":
