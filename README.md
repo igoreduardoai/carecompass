@@ -25,7 +25,7 @@ Real runs (Nemotron 3 Super, free) are saved in `demo/`: the bill comes out to $
 ## Run
 ```bash
 python3 server.py            # http://localhost:8765/mcp
-python3 test_server.py       # 6 HTTP smoke tests
+python3 test_server.py       # 7 HTTP smoke tests
 ```
 Python stdlib only. To expose it for Alexa+ / judges: deploy to any free host (Render free tier, Fly.io, or a Cloudflare Tunnel from a laptop).
 
