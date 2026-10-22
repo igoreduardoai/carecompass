@@ -29,9 +29,32 @@ TOOLS = [
         "housing_unstable": {"type": "boolean"}, "needs_someone_to_drive_after_injection": {"type": "boolean", "description": "true if caregiving duties or lack of an escort get in the way"},
         "no_reliable_phone_or_internet": {"type": "boolean"}, "missed_appointments_last_12m": {"type": "integer"}}}}},
   "annotations": {"readOnlyHint": True}},
+ {"name": "caregiver_recap", "description": "Recall what was worked out earlier in THIS session (bill total, payment plan, barriers and next steps) and return a short recap the patient can read back or share with a family caregiver. Uses only stored tool results; no new numbers.",
+  "inputSchema": {"type": "object", "properties": {"caregiver_name": {"type": "string", "description": "Optional first name of the family member the recap is for"}}},
+  "annotations": {"readOnlyHint": True}},
 ]
+SESSIONS = {}  # Mcp-Session-Id -> {tool name: last structured result}; in-memory, no identifiers stored
 
-def call(name, a):
+def recap(mem, who=None):
+    parts = []
+    if "estimate_patient_bill" in mem: parts.append(f"The bill comes to ${mem['estimate_patient_bill']['total']:,.2f}.")
+    if "payment_plan" in mem:
+        p = mem["payment_plan"]["installments"]; parts.append(f"It can be paid in {len(p)} interest-free payments of about ${p[0]:,.2f}.")
+    if "screen_care_barriers" in mem:
+        b = mem["screen_care_barriers"]
+        if b["flags"]: parts.append("Things getting in the way: " + ", ".join(b["flags"]) + ". Next step: " + b["actions"][0])
+    if not parts: return {"items": 0, "speech": "We haven't worked anything out yet in this conversation."}
+    head = f"Here's a recap for {who}: " if who else "Here's your recap: "
+    return {"items": len(parts), "speech": head + " ".join(parts)}
+
+def call(name, a, mem=None):
+    mem = {} if mem is None else mem
+    if name == "caregiver_recap": return recap(mem, a.get("caregiver_name"))
+    out = _call(name, a)
+    mem[name] = out
+    return out
+
+def _call(name, a):
     if name == "estimate_patient_bill":
         plan = dict(a["plan"])
         # Guard: an LLM often fills oop_remaining=0 for "unknown". That is inconsistent with a deductible still remaining
@@ -52,15 +75,15 @@ def call(name, a):
         return {"unknown_answer_keys": unknown, "tier": c["tier"], "flags": [f["domain"] for f in c["flags"]], "actions": [f["action"] for f in c["flags"]], "resources": [r["name"] for r in c["resources"]], "speech": c["patient_message"], "note": c["note"]}
     raise KeyError(name)
 
-def handle(msg):
+def handle(msg, sid=None):
     m, i = msg.get("method"), msg.get("id")
     if i is None: return None  # notification
     if m == "initialize":
-        res = {"protocolVersion": PROTOCOL, "capabilities": {"tools": {}}, "serverInfo": {"name": "carecompass-mcp", "version": "0.1.0"}}
+        res = {"protocolVersion": PROTOCOL, "capabilities": {"tools": {}}, "serverInfo": {"name": "carecompass-mcp", "version": "0.2.0"}}
     elif m == "tools/list": res = {"tools": TOOLS}
     elif m == "tools/call":
         try:
-            out = call(msg["params"]["name"], msg["params"].get("arguments", {}))
+            out = call(msg["params"]["name"], msg["params"].get("arguments", {}), SESSIONS.setdefault(sid, {}) if sid else None)
             res = {"content": [{"type": "text", "text": out.get("speech", "")}], "structuredContent": out, "isError": False}
         except Exception as e:
             res = {"content": [{"type": "text", "text": f"Error: {type(e).__name__}: {e}"}], "isError": True}
@@ -72,12 +95,14 @@ class H(BaseHTTPRequestHandler):
     def do_POST(self):
         if self.path != "/mcp": self.send_error(404); return
         body = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
-        out = [r for r in map(handle, body) if r] if isinstance(body, list) else handle(body)
+        sid = self.headers.get("Mcp-Session-Id")
+        if isinstance(body, dict) and body.get("method") == "initialize": sid = str(uuid.uuid4())
+        out = [r for r in (handle(b, sid) for b in body) if r] if isinstance(body, list) else handle(body, sid)
         if out is None or out == []:
             self.send_response(202); self.end_headers(); return
         data = json.dumps(out).encode()
         self.send_response(200); self.send_header("Content-Type", "application/json")
-        if isinstance(body, dict) and body.get("method") == "initialize": self.send_header("Mcp-Session-Id", str(uuid.uuid4()))
+        if isinstance(body, dict) and body.get("method") == "initialize": self.send_header("Mcp-Session-Id", sid)
         self.send_header("Content-Length", str(len(data))); self.end_headers(); self.wfile.write(data)
     def do_GET(self): self.send_response(405); self.end_headers()
     def log_message(self, *a): pass

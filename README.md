@@ -7,6 +7,7 @@ A self-hosted **MCP server** (Streamable HTTP, protocol 2025-11-25) that lets Al
 |---|---|
 | `estimate_patient_bill` | Deterministic deductible/coinsurance/copay/OOP math plus a plain-English spoken answer. No LLM arithmetic. |
 | `payment_plan` | Equal, interest-free installments (1–24) |
+| `caregiver_recap` | Remembers what was worked out earlier in the same MCP session (bill, plan, barriers) and reads back a recap a patient can share with a family caregiver. Repeats only stored tool results. |
 | `screen_care_barriers` | Transport/cost/language/caregiver/housing/literacy screener → actions + verified resources only |
 
 All tools are read-only (`readOnlyHint`), take no PHI identifiers, and return a short `speech` field sized for voice.

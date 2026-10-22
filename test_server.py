@@ -7,7 +7,7 @@ def rpc(m, params=None, i=1):
 ok = []
 try:
     ok.append(rpc("initialize", {"protocolVersion": "2025-11-25", "capabilities": {}, "clientInfo": {"name": "t", "version": "0"}})["result"]["serverInfo"]["name"] == "carecompass-mcp")
-    ok.append(len(rpc("tools/list")["result"]["tools"]) == 3)
+    ok.append(len(rpc("tools/list")["result"]["tools"]) == 4)  # +caregiver_recap (v0.2)
     r = rpc("tools/call", {"name": "estimate_patient_bill", "arguments": {"plan": {"deductible_remaining": 500, "coinsurance": 0.2}, "lines": [{"description": "ER visit", "billed": 1450, "allowed": 620}, {"description": "X-ray", "billed": 380, "allowed": 95}, {"description": "ECG", "billed": 210, "allowed": 40}]}})
     ok.append(r["result"]["structuredContent"]["total"] == 551.0)
     r = rpc("tools/call", {"name": "estimate_patient_bill", "arguments": {"plan": {"deductible_remaining": 500, "coinsurance": 20, "copay": 0, "oop_remaining": 0}, "lines": [{"description": "ER visit", "billed": 620, "allowed": 620}, {"description": "X-ray", "billed": 95, "allowed": 95}, {"description": "ECG", "billed": 40, "allowed": 40}]}})
